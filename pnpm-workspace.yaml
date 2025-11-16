@@ -1,0 +1,11 @@
+packages:
+  - "packages/*"
+  - "apps/*"
+
+catalog:
+  typegpu: ^0.8.2
+  unplugin-typegpu: ^0.8.0
+  typescript: ~5.9.3
+  "@webgpu/types": ^0.1.66
+  vitest: ^3.2.4
+  tsdown: ^0.15.0
