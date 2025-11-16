@@ -10,8 +10,7 @@ const root = await tgpu.init();
 const slider = new CanvasJellySlider({ root });
 
 // Adding the slider to the DOM
-const appElement = document.querySelector("#app") as HTMLDivElement;
-appElement.appendChild(slider.canvas);
+document.body.appendChild(slider.canvas);
 ```
 
 ## gooui is created by Software Mansion
