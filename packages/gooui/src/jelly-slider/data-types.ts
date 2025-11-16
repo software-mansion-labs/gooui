@@ -1,6 +1,13 @@
 import tgpu from "typegpu";
 import * as d from "typegpu/data";
 
+export type MaterialContext = d.Infer<typeof MaterialContext>;
+export const MaterialContext = d.struct({
+  uv: d.vec2f,
+  normal: d.vec3f,
+  density: d.f32,
+});
+
 export const DirectionalLight = d.struct({
   direction: d.vec3f,
   color: d.vec3f,

@@ -18,6 +18,13 @@ export class CanvasJellySlider {
 
   constructor(options: CanvasJellySliderOptions) {
     this.canvas = document.createElement("canvas");
+    this.canvas.style.position = "absolute";
+    this.canvas.style.top = "0";
+    this.canvas.style.left = "0";
+    this.canvas.style.right = "0";
+    this.canvas.style.bottom = "0";
+    this.canvas.style.width = "100%";
+    this.canvas.style.height = "100%";
     this.#canvasCtx = this.canvas.getContext("webgpu") as GPUCanvasContext;
 
     this.#canvasCtx.configure({
