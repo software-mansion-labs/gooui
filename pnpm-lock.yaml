@@ -35,6 +35,9 @@ importers:
 
   apps/gooui-vite-vanilla:
     dependencies:
+      '@typegpu/noise':
+        specifier: ^0.8.0
+        version: 0.8.0(typegpu@0.8.2)
       gooui:
         specifier: 'workspace:'
         version: link:../../packages/gooui

@@ -54,9 +54,11 @@ import {
 export interface JellySliderOptions {
   root: TgpuRoot;
   targetFormat: GPUTextureFormat;
+  jellyColor?: d.v3f | ((uv: d.v2f) => d.v3f) | undefined;
+  glowTint?: d.v3f | ((x: number) => d.v3f) | undefined;
 }
 
-const lightAccess = tgpu["~unstable"].accessor(DirectionalLight, {
+const lightAccess = tgpu.const(DirectionalLight, {
   direction: std.normalize(d.vec3f(0.18, -0.3, 0.64)),
   color: d.vec3f(1, 1, 1),
 });
@@ -68,9 +70,18 @@ const taaPrimerAccess = tgpu["~unstable"].accessor(d.vec2f);
 const sliderBBoxSlot =
   tgpu.slot<[top: number, right: number, bottom: number, left: number]>();
 
+const constantAlbedoSlot = tgpu.slot(d.vec3f(1.0, 0.45, 0.075));
+
 const getAlbedoSlot = tgpu.slot((uv: d.v2f): d.v3f => {
   "use gpu";
-  return d.vec3f(1.0, 0.45, 0.075);
+  return constantAlbedoSlot.$;
+});
+
+const constantGlowTintSlot = tgpu.slot(d.vec3f(1.0, 0.45, 0.075));
+
+const getGlowTintSlot = tgpu.slot((x: number): d.v3f => {
+  "use gpu";
+  return constantGlowTintSlot.$;
 });
 
 const staticSlot = tgpu.slot<{
@@ -100,15 +111,17 @@ export class JellySlider {
   #textures: ReturnType<typeof createTextures>;
   #backgroundTexture: ReturnType<typeof createBackgroundTexture>;
   #bindGroups: BindGroups;
+  #value: number;
 
   constructor(options: JellySliderOptions) {
     this.root = options.root;
     this.#randomUniform = this.root.createUniform(d.vec2f);
 
-    this.#qualityScale = 0.5;
+    this.#qualityScale = 1;
     this.#frameCount = 0;
     this.#textures = createTextures(this.root, 1, 1);
     this.#backgroundTexture = createBackgroundTexture(this.root, 1, 1);
+    this.#value = 0;
 
     const hasTimestampQuery = this.root.enabledFeatures.has("timestamp-query");
 
@@ -145,11 +158,39 @@ export class JellySlider {
     this.#bindGroups = this.#createBindGroups();
 
     this.#rayMarchPipeline = this.root["~unstable"]
+      .with(taaPrimerAccess, this.#randomUniform)
+      .with(cameraAccess, this.#camera.cameraUniform)
+      .with(endCapAccess, this.#slider.endCapUniform)
+      .with(staticSlot, { bezierTexture, filteringSampler })
+      .with(sliderBBoxSlot, bezierBbox)
+      .pipe((cfg) => {
+        if (!options.jellyColor) {
+          return cfg;
+        }
+
+        if ((options.jellyColor as d.v3f).kind === "vec3f") {
+          return cfg.with(constantAlbedoSlot, options.jellyColor as d.v3f);
+        }
+
+        return cfg.with(getAlbedoSlot, options.jellyColor);
+      })
+      .pipe((cfg) => {
+        if (!options.glowTint) {
+          return cfg;
+        }
+
+        if ((options.glowTint as d.v3f).kind === "vec3f") {
+          return cfg.with(constantGlowTintSlot, options.glowTint as d.v3f);
+        }
+
+        return cfg.with(getGlowTintSlot, options.glowTint);
+      })
       .withVertex(fullScreenTriangle, {})
       .withFragment(raymarchFn, { format: "rgba8unorm" })
       .createPipeline();
 
     this.#renderPipeline = this.root["~unstable"]
+      .with(staticSlot, { bezierTexture, filteringSampler })
       .withVertex(fullScreenTriangle, {})
       .withFragment(fragmentMain, { format: options.targetFormat })
       .createPipeline();
@@ -168,10 +209,21 @@ export class JellySlider {
     };
   }
 
+  get value(): number {
+    return this.#value;
+  }
+
+  set value(v: number) {
+    this.#value = v;
+    this.#slider.setDragX(v);
+  }
+
   handleResize(width: number, height: number) {
     if (this.#width === width && this.#height === height) {
       return;
     }
+    this.#width = width;
+    this.#height = height;
 
     this.#camera.updateProjection(Math.PI / 4, width, height);
     this.#textures = createTextures(this.root, width, height);
@@ -503,8 +555,6 @@ const sqLength = (a: d.v3f) => {
 
 const getFakeShadow = (position: d.v3f, lightDir: d.v3f): d.v3f => {
   "use gpu";
-  // TODO: Provide UVs
-  const jellyColor = getAlbedoSlot.$(d.vec2f());
   const endCapX = endCapAccess.$.x;
 
   if (position.y < -GroundParams.groundThickness) {
@@ -536,10 +586,11 @@ const getFakeShadow = (position: d.v3f, lightDir: d.v3f): d.v3f => {
     // Normally it would be just data.y, but there transition is too sudden when the jelly is bunched up.
     // To mitigate this, we transition into a position-based transition.
     const jellySaturation = std.mix(
-      0,
+      d.f32(0),
       data.y,
       std.saturate(position.x * 1.5 + 1.1),
     );
+    const jellyColor = getGlowTintSlot.$(jellySaturation);
     const shadowColor = std.mix(
       d.vec3f(0, 0, 0),
       jellyColor.xyz,
@@ -736,17 +787,13 @@ const renderBackground = (
       1 - (std.abs(centeredUV.y - 0.5) * 2) ** 2 * 0.3,
     );
 
-    const density = std.max(
+    const data = std.textureSampleLevel(
+      staticSlot.$.bezierTexture.$,
+      staticSlot.$.filteringSampler.$,
+      finalUV,
       0,
-      (std.textureSampleLevel(
-        staticSlot.$.bezierTexture.$,
-        staticSlot.$.filteringSampler.$,
-        finalUV,
-        0,
-      ).x -
-        0.25) *
-        8,
     );
+    const density = std.max(0, (data.x - 0.25) * 8);
 
     const fadeX = std.smoothstep(0, -0.2, hitPosition.x - endCapX);
     const fadeZ = 1 - (std.abs(centeredUV.y - 0.5) * 2) ** 3;
@@ -769,8 +816,7 @@ const renderBackground = (
   const newNormal = getNormalMain(posOffset);
 
   // Calculate fake bounce lighting
-  // TODO: Provide UVs
-  const jellyColor = getAlbedoSlot.$(d.vec2f());
+  const jellyColor = getGlowTintSlot.$(hitPosition.x * 0.5 + 0.5);
   const sqDist = sqLength(hitPosition.sub(d.vec3f(endCapX, 0, 0)));
   const bounceLight = jellyColor.xyz.mul((1 / (sqDist * 15 + 1)) * 0.4);
   const sideBounceLight = jellyColor.xyz
@@ -872,8 +918,9 @@ const rayMarch = (rayOrigin: d.v3f, rayDirection: d.v3f, uv: d.v2f) => {
 
         const env = rayMarchNoJelly(exitPos, refrDir);
         const progress = hitInfo.t;
-        // TODO: Provide UVs
-        const jellyColor = getAlbedoSlot.$(d.vec2f());
+        const jellyColor = getAlbedoSlot.$(
+          d.vec2f(progress, hitPosition.z * 2.5 + 0.5),
+        );
 
         const scatterTint = jellyColor.xyz.mul(1.5);
         const density = d.f32(20.0);

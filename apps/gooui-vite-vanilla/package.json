@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@typegpu/noise": "^0.8.0",
     "gooui": "workspace:",
     "typegpu": "^0.8.2"
   },
