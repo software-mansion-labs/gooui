@@ -1,12 +1,18 @@
 import type { TgpuRoot } from "typegpu";
 import type * as d from "typegpu/data";
+import type { MaterialContext } from "./data-types.ts";
 import { EventHandler } from "./events.ts";
 import { JellySlider } from "./jelly-slider.ts";
 
 export interface CanvasJellySliderOptions {
   root: TgpuRoot;
-  jellyColor?: d.v3f | ((uv: d.v2f) => d.v3f) | undefined;
+  jellyColor?: d.v3f | ((ctx: MaterialContext) => d.v3f) | undefined;
   glowTint?: d.v3f | ((x: number) => d.v3f) | undefined;
+  material?: ((ctx: MaterialContext) => d.v3f) | undefined;
+  /**
+   * @default true
+   */
+  refractedHighlight?: boolean | undefined;
 }
 
 const presentationFormat = navigator.gpu.getPreferredCanvasFormat();
@@ -37,6 +43,8 @@ export class CanvasJellySlider {
       root: options.root,
       jellyColor: options.jellyColor,
       glowTint: options.glowTint,
+      material: options.material,
+      refractedHighlight: options.refractedHighlight,
       targetFormat: presentationFormat,
     });
 

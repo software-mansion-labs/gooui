@@ -35,12 +35,12 @@ import {
   DirectionalLight,
   HitInfo,
   LineInfo,
+  MaterialContext,
   ObjectType,
   Ray,
   rayMarchLayout,
   SdfBbox,
   sampleLayout,
-  type MaterialContext,
 } from "./data-types.ts";
 import { Slider } from "./slider.ts";
 import { TAAResolver } from "./taa.ts";
@@ -55,9 +55,13 @@ import {
 export interface JellySliderOptions {
   root: TgpuRoot;
   targetFormat: GPUTextureFormat;
-  jellyColor?: d.v3f | ((uv: d.v2f) => d.v3f) | undefined;
+  jellyColor?: d.v3f | ((ctx: MaterialContext) => d.v3f) | undefined;
   glowTint?: d.v3f | ((x: number) => d.v3f) | undefined;
-  material?: ((ctx: MaterialContext) => d.v4f) | undefined;
+  material?: ((ctx: MaterialContext) => d.v3f) | undefined;
+  /**
+   * @default true
+   */
+  refractedHighlight?: boolean | undefined;
 }
 
 const lightAccess = tgpu.const(DirectionalLight, {
@@ -74,7 +78,7 @@ const sliderBBoxSlot =
 
 const constantAlbedoSlot = tgpu.slot(d.vec3f(1.0, 0.45, 0.075));
 
-const getAlbedoSlot = tgpu.slot((uv: d.v2f): d.v3f => {
+const getAlbedoSlot = tgpu.slot((ctx: MaterialContext): d.v3f => {
   "use gpu";
   return constantAlbedoSlot.$;
 });
@@ -87,6 +91,7 @@ const getGlowTintSlot = tgpu.slot((x: number): d.v3f => {
 });
 
 const staticSlot = tgpu.slot<{
+  refractedHighlight: boolean;
   bezierTexture: TgpuTextureView<d.WgslTexture2d<d.F32>>;
   filteringSampler: TgpuFixedSampler;
 }>();
@@ -95,6 +100,37 @@ type BindGroups = {
   rayMarch: TgpuBindGroup<(typeof rayMarchLayout)["entries"]>;
   render: TgpuBindGroup<(typeof sampleLayout)["entries"]>[];
 };
+
+export const defaultJellyMaterial = (ctx: MaterialContext): d.v3f => {
+  "use gpu";
+
+  if (ctx.k <= 0) {
+    // No refraction
+    return ctx.reflection.mul(ctx.fresnel);
+  }
+
+  const jellyColor = getAlbedoSlot.$(ctx);
+  const scatterTint = jellyColor.xyz.mul(1.5);
+  const density = d.f32(20.0);
+  const absorb = d.vec3f(1.0).sub(jellyColor.xyz).mul(density);
+
+  const T = beerLambert(absorb.mul(ctx.uv.x ** 2), 0.08);
+
+  const lightDir = std.neg(lightAccess.$.direction);
+
+  const forward = std.max(0.0, std.dot(lightDir, ctx.refrDir));
+  const scatter = scatterTint.mul(
+    JELLY_SCATTER_STRENGTH * forward * ctx.uv.x ** 3,
+  );
+  const refractedColor = ctx.env.mul(T).add(scatter);
+
+  return std.add(
+    ctx.reflection.mul(ctx.fresnel),
+    refractedColor.mul(1 - ctx.fresnel),
+  );
+};
+
+const materialSlot = tgpu.slot(defaultJellyMaterial);
 
 export class JellySlider {
   readonly root: TgpuRoot;
@@ -163,7 +199,11 @@ export class JellySlider {
       .with(taaPrimerAccess, this.#randomUniform)
       .with(cameraAccess, this.#camera.cameraUniform)
       .with(endCapAccess, this.#slider.endCapUniform)
-      .with(staticSlot, { bezierTexture, filteringSampler })
+      .with(staticSlot, {
+        bezierTexture,
+        filteringSampler,
+        refractedHighlight: options.refractedHighlight ?? true,
+      })
       .with(sliderBBoxSlot, bezierBbox)
       .pipe((cfg) => {
         if (!options.jellyColor) {
@@ -187,12 +227,19 @@ export class JellySlider {
 
         return cfg.with(getGlowTintSlot, options.glowTint);
       })
+      .pipe((cfg) =>
+        options.material ? cfg.with(materialSlot, options.material) : cfg,
+      )
       .withVertex(fullScreenTriangle, {})
       .withFragment(raymarchFn, { format: "rgba8unorm" })
       .createPipeline();
 
     this.#renderPipeline = this.root["~unstable"]
-      .with(staticSlot, { bezierTexture, filteringSampler })
+      .with(staticSlot, {
+        bezierTexture,
+        filteringSampler,
+        refractedHighlight: options.refractedHighlight ?? true,
+      })
       .withVertex(fullScreenTriangle, {})
       .withFragment(fragmentMain, { format: options.targetFormat })
       .createPipeline();
@@ -775,6 +822,7 @@ const renderBackground = (
   const sliderStretch = (endCapX + 1) * 0.5;
 
   if (
+    staticSlot.$.refractedHighlight &&
     std.abs(hitPosition.x + offsetX) < highlightWidth &&
     std.abs(hitPosition.z + offsetZ) < highlightHeight
   ) {
@@ -908,9 +956,22 @@ const rayMarch = (rayOrigin: d.v3f, rayDirection: d.v3f, uv: d.v2f) => {
 
       const reflection = std.saturate(d.vec3f(hitPosition.y + 0.2));
 
+      const progress = hitInfo.t;
       const eta = 1.0 / JELLY_IOR;
       const k = 1.0 - eta * eta * (1.0 - cosi * cosi);
-      let refractedColor = d.vec3f();
+
+      const materialCtx = MaterialContext({
+        uv: d.vec2f(progress, hitPosition.z * 2.5 + 0.5),
+        normal: N,
+        fresnel: F,
+        env: d.vec3f(),
+        k,
+        reflection,
+        refrDir: d.vec3f(),
+        lightDir: lightAccess.$.direction,
+        viewDir: rayDirection,
+      });
+
       if (k > 0.0) {
         const refrDir = std.normalize(
           std.add(I.mul(eta), N.mul(eta * cosi - std.sqrt(k))),
@@ -918,29 +979,11 @@ const rayMarch = (rayOrigin: d.v3f, rayDirection: d.v3f, uv: d.v2f) => {
         const p = hitPosition.add(refrDir.mul(SURF_DIST * 2.0));
         const exitPos = p.add(refrDir.mul(SURF_DIST * 2.0));
 
-        const env = rayMarchNoJelly(exitPos, refrDir);
-        const progress = hitInfo.t;
-        const jellyColor = getAlbedoSlot.$(
-          d.vec2f(progress, hitPosition.z * 2.5 + 0.5),
-        );
-
-        const scatterTint = jellyColor.xyz.mul(1.5);
-        const density = d.f32(20.0);
-        const absorb = d.vec3f(1.0).sub(jellyColor.xyz).mul(density);
-
-        const T = beerLambert(absorb.mul(progress ** 2), 0.08);
-
-        const lightDir = std.neg(lightAccess.$.direction);
-
-        const forward = std.max(0.0, std.dot(lightDir, refrDir));
-        const scatter = scatterTint.mul(
-          JELLY_SCATTER_STRENGTH * forward * progress ** 3,
-        );
-        refractedColor = env.mul(T).add(scatter);
+        materialCtx.env = rayMarchNoJelly(exitPos, refrDir);
+        materialCtx.refrDir = refrDir;
       }
 
-      const jelly = std.add(reflection.mul(F), refractedColor.mul(1 - F));
-
+      const jelly = materialSlot.$(materialCtx);
       return d.vec4f(jelly, 1.0);
     }
 

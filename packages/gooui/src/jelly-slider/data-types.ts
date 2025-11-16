@@ -5,7 +5,13 @@ export type MaterialContext = d.Infer<typeof MaterialContext>;
 export const MaterialContext = d.struct({
   uv: d.vec2f,
   normal: d.vec3f,
-  density: d.f32,
+  fresnel: d.f32,
+  env: d.vec3f,
+  k: d.f32,
+  reflection: d.vec3f,
+  refrDir: d.vec3f,
+  lightDir: d.vec3f,
+  viewDir: d.vec3f,
 });
 
 export const DirectionalLight = d.struct({
