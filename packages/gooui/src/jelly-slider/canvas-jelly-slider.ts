@@ -18,8 +18,6 @@ export class CanvasJellySlider {
 
   constructor(options: CanvasJellySliderOptions) {
     this.canvas = document.createElement("canvas");
-    this.canvas.width = 512;
-    this.canvas.height = 512;
     this.#canvasCtx = this.canvas.getContext("webgpu") as GPUCanvasContext;
 
     this.#canvasCtx.configure({
@@ -48,6 +46,8 @@ export class CanvasJellySlider {
 
       resolution[0] = entry.devicePixelContentBoxSize[0].inlineSize;
       resolution[1] = entry.devicePixelContentBoxSize[0].blockSize;
+      this.canvas.width = resolution[0];
+      this.canvas.height = resolution[1];
     });
     observer.observe(this.canvas);
 
