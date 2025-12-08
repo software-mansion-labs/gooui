@@ -94,3 +94,9 @@ button:focus-visible {
         background-color: #f9f9f9;
     }
 }
+
+.slider-container {
+    position: relative;
+    width: 32rem;
+    height: 32rem;
+}
