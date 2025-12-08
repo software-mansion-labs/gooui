@@ -29,6 +29,29 @@ function* haltonSequence(base: number) {
   }
 }
 
+export interface PerspectiveCamera {
+  type: "perspective";
+  fov: number;
+  near: number;
+  far: number;
+
+  width: number;
+  height: number;
+}
+
+export interface OrthographicCamera {
+  type: "orthographic";
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+  near: number;
+  far: number;
+
+  width: number;
+  height: number;
+}
+
 export class CameraController {
   #uniform: TgpuUniform<typeof Camera>;
   #view: d.m4x4f;
@@ -39,31 +62,38 @@ export class CameraController {
   #baseProjInv: d.m4x4f;
   #haltonX: Generator<number>;
   #haltonY: Generator<number>;
-  #width: number;
-  #height: number;
+  #options: PerspectiveCamera | OrthographicCamera;
 
   constructor(
     root: TgpuRoot,
     position: d.v3f,
     target: d.v3f,
     up: d.v3f,
-    fov: number,
-    width: number,
-    height: number,
-    near = 0.1,
-    far = 10,
+    options: PerspectiveCamera | OrthographicCamera,
   ) {
-    this.#width = width;
-    this.#height = height;
+    this.#options = options;
 
     this.#view = m.mat4.lookAt(position, target, up, d.mat4x4f());
-    this.#baseProj = m.mat4.perspective(
-      fov,
-      width / height,
-      near,
-      far,
-      d.mat4x4f(),
-    );
+    if (options.type === "perspective") {
+      this.#baseProj = m.mat4.perspective(
+        options.fov,
+        options.width / options.height,
+        options.near,
+        options.far,
+        d.mat4x4f(),
+      );
+    } else {
+      this.#baseProj = m.mat4.ortho(
+        options.left,
+        options.right,
+        options.bottom,
+        options.top,
+        options.near,
+        options.far,
+        d.mat4x4f(),
+      );
+    }
+
     this.#proj = this.#baseProj;
 
     this.#viewInv = m.mat4.invert(this.#view, d.mat4x4f());
@@ -87,8 +117,8 @@ export class CameraController {
       this.#haltonY.next().value,
     ] as [number, number];
 
-    const jitterX = ((jx - 0.5) * 2.0) / this.#width;
-    const jitterY = ((jy - 0.5) * 2.0) / this.#height;
+    const jitterX = ((jx - 0.5) * 2.0) / this.#options.width;
+    const jitterY = ((jy - 0.5) * 2.0) / this.#options.height;
 
     const jitterMatrix = m.mat4.identity(d.mat4x4f());
     jitterMatrix[12] = jitterX; // x translation in NDC
@@ -113,23 +143,28 @@ export class CameraController {
     });
   }
 
-  updateProjection(
-    fov: number,
-    width: number,
-    height: number,
-    near = 0.1,
-    far = 100,
-  ) {
-    this.#width = width;
-    this.#height = height;
+  updateProjection(options: PerspectiveCamera | OrthographicCamera) {
+    this.#options = options;
 
-    this.#baseProj = m.mat4.perspective(
-      fov,
-      width / height,
-      near,
-      far,
-      d.mat4x4f(),
-    );
+    if (options.type === "perspective") {
+      this.#baseProj = m.mat4.perspective(
+        options.fov,
+        options.width / options.height,
+        options.near,
+        options.far,
+        d.mat4x4f(),
+      );
+    } else {
+      this.#baseProj = m.mat4.ortho(
+        options.left,
+        options.right,
+        options.bottom,
+        options.top,
+        options.near,
+        options.far,
+        d.mat4x4f(),
+      );
+    }
     this.#baseProjInv = m.mat4.invert(this.#baseProj, d.mat4x4f());
 
     this.#uniform.writePartial({

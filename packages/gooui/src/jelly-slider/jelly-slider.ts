@@ -161,8 +161,6 @@ export class JellySlider {
     this.#backgroundTexture = createBackgroundTexture(this.root, 1, 1);
     this.#value = 0;
 
-    const hasTimestampQuery = this.root.enabledFeatures.has("timestamp-query");
-
     const NUM_POINTS = 17;
 
     this.#taaResolver = new TAAResolver(this.root, 1, 1);
@@ -183,14 +181,22 @@ export class JellySlider {
       minFilter: "linear",
     });
 
+    const perspectiveConfig = {
+      type: "perspective" as const,
+      fov: Math.PI / 4,
+      aspect: 1,
+      near: 0.1,
+      far: 10,
+      width: 1,
+      height: 1,
+    };
+
     this.#camera = new CameraController(
       this.root,
       d.vec3f(0.024, 2.7, 1.9),
       d.vec3f(0, 0, 0),
       d.vec3f(0, 1, 0),
-      Math.PI / 4,
-      1,
-      1,
+      perspectiveConfig,
     );
 
     this.#bindGroups = this.#createBindGroups();
@@ -274,7 +280,14 @@ export class JellySlider {
     this.#width = width;
     this.#height = height;
 
-    this.#camera.updateProjection(Math.PI / 4, width, height);
+    this.#camera.updateProjection({
+      type: "perspective" as const,
+      fov: Math.PI / 4,
+      near: 0.1,
+      far: 10,
+      width,
+      height,
+    });
     this.#textures = createTextures(this.root, width, height);
     this.#backgroundTexture = createBackgroundTexture(this.root, width, height);
     this.#taaResolver.resize(width, height);
@@ -301,6 +314,7 @@ export class JellySlider {
     this.#rayMarchPipeline
       .withColorAttachment({
         view: this.root.unwrap(this.#textures[currentFrame].sampled),
+        clearValue: [0, 0, 0, 0],
         loadOp: "clear",
         storeOp: "store",
       })
@@ -315,6 +329,7 @@ export class JellySlider {
     this.#renderPipeline
       .withColorAttachment({
         view: targetView,
+        clearValue: [0, 0, 0, 0],
         loadOp: "clear",
         storeOp: "store",
       })
@@ -905,12 +920,13 @@ const rayMarch = (rayOrigin: d.v3f, rayDirection: d.v3f, uv: d.v2f) => {
       break;
     }
   }
-  const background = renderBackground(
-    rayOrigin,
-    rayDirection,
-    backgroundDist,
-    d.f32(),
-  );
+  // const background = renderBackground(
+  //   rayOrigin,
+  //   rayDirection,
+  //   backgroundDist,
+  //   d.f32(),
+  // );
+  const background = d.vec4f(0.0, 0.0, 0.0, 0.0);
 
   const bbox = getSliderBbox();
   const zDepth = d.f32(0.25);
@@ -1007,7 +1023,7 @@ const raymarchFn = tgpu["~unstable"].fragmentFn({
   const ray = getRay(ndc);
 
   const color = rayMarch(ray.origin, ray.direction, uv);
-  return d.vec4f(std.tanh(color.xyz.mul(1.3)), 1);
+  return d.vec4f(std.tanh(color.xyz.mul(1.3)), 1).mul(color.w);
 });
 
 const fragmentMain = tgpu["~unstable"].fragmentFn({
