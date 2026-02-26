@@ -1,7 +1,7 @@
 {
   "name": "gooui-vite-vanilla",
-  "private": true,
   "version": "0.0.0",
+  "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,9 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@typegpu/noise": "^0.8.0",
+    "@typegpu/noise": "^0.10.0",
     "gooui": "workspace:",
-    "typegpu": "^0.8.2"
+    "typegpu": "catalog:"
   },
   "devDependencies": {
     "typescript": "catalog:",

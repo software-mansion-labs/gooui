@@ -1,9 +1,7 @@
 import "./style.css";
 import { perlin3d } from "@typegpu/noise";
 import { CanvasJellySlider } from "gooui";
-import tgpu from "typegpu";
-import * as d from "typegpu/data";
-import * as std from "typegpu/std";
+import tgpu, { d, std } from "typegpu";
 import { checkerBoard } from "./checkerboard.ts";
 
 const appElement = document.querySelector("#app") as HTMLDivElement;
@@ -47,7 +45,7 @@ const root = await tgpu.init();
 
   const checkerSlider = new CanvasJellySlider({
     root,
-    jellyColor: (uv) => {
+    jellyColor: ({ uv }) => {
       "use gpu";
       const suv = uv.mul(d.vec2f(10, 2));
 

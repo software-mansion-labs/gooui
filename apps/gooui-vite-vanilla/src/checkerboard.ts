@@ -1,5 +1,4 @@
-import type * as d from "typegpu/data";
-import * as std from "typegpu/std";
+import { d, std } from "typegpu";
 
 export const checkerBoard = (uv: d.v2f): number => {
   "use gpu";
