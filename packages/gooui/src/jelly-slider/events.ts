@@ -7,7 +7,7 @@ import {
   TARGET_MAX,
   TARGET_MIN,
   TARGET_OFFSET,
-} from "./constants.ts";
+} from './constants.ts';
 
 export class EventHandler {
   private canvas: HTMLCanvasElement;
@@ -22,25 +22,25 @@ export class EventHandler {
 
   private setupEventListeners() {
     // Mouse events
-    this.canvas.addEventListener("mouseup", () => {
+    this.canvas.addEventListener('mouseup', () => {
       this.isMouseDown = false;
     });
 
-    this.canvas.addEventListener("mouseleave", () => {
+    this.canvas.addEventListener('mouseleave', () => {
       this.isMouseDown = false;
     });
 
-    this.canvas.addEventListener("mousedown", (e) => {
+    this.canvas.addEventListener('mousedown', (e) => {
       this.handlePointerDown(e.clientX);
     });
 
-    this.canvas.addEventListener("mousemove", (e) => {
+    this.canvas.addEventListener('mousemove', (e) => {
       if (!this.isMouseDown) return;
       this.handlePointerMove(e.clientX);
     });
 
     // Touch events
-    this.canvas.addEventListener("touchstart", (e) => {
+    this.canvas.addEventListener('touchstart', (e) => {
       e.preventDefault();
       if (!e.touches[0]) {
         return;
@@ -48,7 +48,7 @@ export class EventHandler {
       this.handlePointerDown(e.touches[0].clientX);
     });
 
-    this.canvas.addEventListener("touchmove", (e) => {
+    this.canvas.addEventListener('touchmove', (e) => {
       e.preventDefault();
       if (!e.touches[0]) {
         return;
@@ -57,7 +57,7 @@ export class EventHandler {
       this.handlePointerMove(e.touches[0].clientX);
     });
 
-    this.canvas.addEventListener("touchend", (e) => {
+    this.canvas.addEventListener('touchend', (e) => {
       e.preventDefault();
       this.isMouseDown = false;
     });

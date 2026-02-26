@@ -1,13 +1,13 @@
-import type { MaterialContext } from "gooui";
-import "./style.css";
-import { perlin2d } from "@typegpu/noise";
-import { d, std } from "typegpu";
+import type { MaterialContext } from 'gooui';
+import './style.css';
+import { perlin2d } from '@typegpu/noise';
+import { d, std } from 'typegpu';
 
 const dark = d.vec3f(0.3, 0.15, 0.1);
 const light = d.vec3f(0.8, 0.6, 0.4);
 
 export const woodMaterial = (ctx: MaterialContext): d.v3f => {
-  "use gpu";
+  'use gpu';
   const uv1 = ctx.uv.mul(10);
   const layer1_1 = perlin2d.sample(uv1);
   const layer1_2 = perlin2d.sample(uv1.mul(2)) * 0.5;

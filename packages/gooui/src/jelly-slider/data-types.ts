@@ -1,5 +1,5 @@
-import tgpu from "typegpu";
-import * as d from "typegpu/data";
+import tgpu from 'typegpu';
+import * as d from 'typegpu/data';
 
 export type MaterialContext = d.Infer<typeof MaterialContext>;
 export const MaterialContext = d.struct({
@@ -66,7 +66,7 @@ export const taaResolveLayout = tgpu.bindGroupLayout({
     texture: d.texture2d(),
   },
   outputTexture: {
-    storageTexture: d.textureStorage2d("rgba8unorm", "write-only"),
+    storageTexture: d.textureStorage2d('rgba8unorm', 'write-only'),
   },
 });
 

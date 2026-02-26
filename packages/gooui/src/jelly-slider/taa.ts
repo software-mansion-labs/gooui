@@ -1,26 +1,18 @@
-import tgpu from "typegpu";
-import * as d from "typegpu/data";
-import * as std from "typegpu/std";
-import type { TgpuComputePipeline, TgpuRoot, TgpuTextureView } from "typegpu";
-import { taaResolveLayout } from "./data-types.ts";
+import tgpu from 'typegpu';
+import * as d from 'typegpu/data';
+import * as std from 'typegpu/std';
+import type { TgpuComputePipeline, TgpuRoot, TgpuTextureView } from 'typegpu';
+import { taaResolveLayout } from './data-types.ts';
 
-export const taaResolveFn = tgpu["~unstable"].computeFn({
+export const taaResolveFn = tgpu['~unstable'].computeFn({
   workgroupSize: [16, 16],
   in: {
     gid: d.builtin.globalInvocationId,
   },
 })(({ gid }) => {
-  const currentColor = std.textureLoad(
-    taaResolveLayout.$.currentTexture,
-    d.vec2u(gid.xy),
-    0,
-  );
+  const currentColor = std.textureLoad(taaResolveLayout.$.currentTexture, d.vec2u(gid.xy), 0);
 
-  const historyColor = std.textureLoad(
-    taaResolveLayout.$.historyTexture,
-    d.vec2u(gid.xy),
-    0,
-  );
+  const historyColor = std.textureLoad(taaResolveLayout.$.historyTexture, d.vec2u(gid.xy), 0);
 
   let minColor = d.vec3f(9999.0);
   let maxColor = d.vec3f(-9999.0);
@@ -36,11 +28,7 @@ export const taaResolveFn = tgpu["~unstable"].computeFn({
         d.vec2i(dimensions.xy).sub(d.vec2i(1)),
       );
 
-      const neighborColor = std.textureLoad(
-        taaResolveLayout.$.currentTexture,
-        clampedCoord,
-        0,
-      );
+      const neighborColor = std.textureLoad(taaResolveLayout.$.currentTexture, clampedCoord, 0);
 
       minColor = std.min(minColor, neighborColor.xyz);
       maxColor = std.max(maxColor, neighborColor.xyz);
@@ -58,61 +46,32 @@ export const taaResolveFn = tgpu["~unstable"].computeFn({
 
   const borderSize = d.f32(0.02);
 
-  const fadeInX = std.smoothstep(
-    textRegionMinX - borderSize,
-    textRegionMinX + borderSize,
-    uv.x,
-  );
+  const fadeInX = std.smoothstep(textRegionMinX - borderSize, textRegionMinX + borderSize, uv.x);
   const fadeOutX =
-    d.f32(1.0) -
-    std.smoothstep(
-      textRegionMaxX - borderSize,
-      textRegionMaxX + borderSize,
-      uv.x,
-    );
-  const fadeInY = std.smoothstep(
-    textRegionMinY - borderSize,
-    textRegionMinY + borderSize,
-    uv.y,
-  );
+    d.f32(1.0) - std.smoothstep(textRegionMaxX - borderSize, textRegionMaxX + borderSize, uv.x);
+  const fadeInY = std.smoothstep(textRegionMinY - borderSize, textRegionMinY + borderSize, uv.y);
   const fadeOutY =
-    d.f32(1.0) -
-    std.smoothstep(
-      textRegionMaxY - borderSize,
-      textRegionMaxY + borderSize,
-      uv.y,
-    );
+    d.f32(1.0) - std.smoothstep(textRegionMaxY - borderSize, textRegionMaxY + borderSize, uv.y);
 
   const inTextRegion = fadeInX * fadeOutX * fadeInY * fadeOutY;
   const blendFactor = std.mix(d.f32(0.9), d.f32(0.7), inTextRegion);
 
-  const resolvedColor = d.vec4f(
-    std.mix(currentColor.xyz, historyColorClamped, blendFactor),
-    1.0,
-  );
+  const resolvedColor = d.vec4f(std.mix(currentColor.xyz, historyColorClamped, blendFactor), 1.0);
 
-  std.textureStore(
-    taaResolveLayout.$.outputTexture,
-    d.vec2u(gid.x, gid.y),
-    resolvedColor,
-  );
+  std.textureStore(taaResolveLayout.$.outputTexture, d.vec2u(gid.x, gid.y), resolvedColor);
 });
 
-export function createTaaTextures(
-  root: TgpuRoot,
-  width: number,
-  height: number,
-) {
+export function createTaaTextures(root: TgpuRoot, width: number, height: number) {
   return [0, 1].map(() => {
-    const texture = root["~unstable"]
+    const texture = root['~unstable']
       .createTexture({
         size: [width, height],
-        format: "rgba8unorm",
+        format: 'rgba8unorm',
       })
-      .$usage("storage", "sampled");
+      .$usage('storage', 'sampled');
 
     return {
-      write: texture.createView(d.textureStorage2d("rgba8unorm")),
+      write: texture.createView(d.textureStorage2d('rgba8unorm')),
       sampled: texture.createView(),
     };
   });
@@ -130,9 +89,7 @@ export class TAAResolver {
     this.#width = width;
     this.#height = height;
 
-    this.#pipeline = root["~unstable"]
-      .withCompute(taaResolveFn)
-      .createPipeline();
+    this.#pipeline = root['~unstable'].withCompute(taaResolveFn).createPipeline();
 
     this.#textures = createTaaTextures(root, width, height);
   }
@@ -148,17 +105,11 @@ export class TAAResolver {
       .with(
         this.#root.createBindGroup(taaResolveLayout, {
           currentTexture,
-          historyTexture:
-            frameCount === 1
-              ? currentTexture
-              : this.#textures[previousFrame].sampled,
+          historyTexture: frameCount === 1 ? currentTexture : this.#textures[previousFrame].sampled,
           outputTexture: this.#textures[currentFrame].write,
         }),
       )
-      .dispatchWorkgroups(
-        Math.ceil(this.#width / 16),
-        Math.ceil(this.#height / 16),
-      );
+      .dispatchWorkgroups(Math.ceil(this.#width / 16), Math.ceil(this.#height / 16));
 
     return this.#textures[currentFrame].sampled;
   }

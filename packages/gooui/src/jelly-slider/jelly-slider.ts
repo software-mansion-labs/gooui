@@ -1,5 +1,5 @@
-import { randf } from "@typegpu/noise";
-import * as sdf from "@typegpu/sdf";
+import { randf } from '@typegpu/noise';
+import * as sdf from '@typegpu/sdf';
 import type {
   TgpuBindGroup,
   TgpuFixedSampler,
@@ -7,10 +7,10 @@ import type {
   TgpuRoot,
   TgpuTextureView,
   TgpuUniform,
-} from "typegpu";
-import tgpu, { d, std } from "typegpu";
-import { fullScreenTriangle } from "typegpu/common";
-import { Camera, CameraController } from "../common/camera.ts";
+} from 'typegpu';
+import tgpu, { d, std } from 'typegpu';
+import { fullScreenTriangle } from 'typegpu/common';
+import { Camera, CameraController } from '../common/camera.ts';
 import {
   AMBIENT_COLOR,
   AMBIENT_INTENSITY,
@@ -28,7 +28,7 @@ import {
   SPECULAR_INTENSITY,
   SPECULAR_POWER,
   SURF_DIST,
-} from "./constants.ts";
+} from './constants.ts';
 import {
   DirectionalLight,
   HitInfo,
@@ -39,16 +39,16 @@ import {
   rayMarchLayout,
   SdfBbox,
   sampleLayout,
-} from "./data-types.ts";
-import { Slider } from "./slider.ts";
-import { TAAResolver } from "./taa.ts";
+} from './data-types.ts';
+import { Slider } from './slider.ts';
+import { TAAResolver } from './taa.ts';
 import {
   beerLambert,
   createBackgroundTexture,
   createTextures,
   fresnelSchlick,
   intersectBox,
-} from "./utils.ts";
+} from './utils.ts';
 
 export interface JellySliderOptions {
   root: TgpuRoot;
@@ -75,15 +75,15 @@ const sliderBBoxSlot = tgpu.slot<[top: number, right: number, bottom: number, le
 
 const constantAlbedoSlot = tgpu.slot(d.vec3f(1.0, 0.45, 0.075));
 
-const getAlbedoSlot = tgpu.slot((ctx: MaterialContext): d.v3f => {
-  "use gpu";
+const getAlbedoSlot = tgpu.slot((_ctx: MaterialContext): d.v3f => {
+  'use gpu';
   return constantAlbedoSlot.$;
 });
 
 const constantGlowTintSlot = tgpu.slot(d.vec3f(1.0, 0.45, 0.075));
 
-const getGlowTintSlot = tgpu.slot((x: number): d.v3f => {
-  "use gpu";
+const getGlowTintSlot = tgpu.slot((_x: number): d.v3f => {
+  'use gpu';
   return constantGlowTintSlot.$;
 });
 
@@ -94,12 +94,12 @@ const staticSlot = tgpu.slot<{
 }>();
 
 type BindGroups = {
-  rayMarch: TgpuBindGroup<(typeof rayMarchLayout)["entries"]>;
-  render: TgpuBindGroup<(typeof sampleLayout)["entries"]>[];
+  rayMarch: TgpuBindGroup<(typeof rayMarchLayout)['entries']>;
+  render: TgpuBindGroup<(typeof sampleLayout)['entries']>[];
 };
 
 export const defaultJellyMaterial = (ctx: MaterialContext): d.v3f => {
-  "use gpu";
+  'use gpu';
 
   if (ctx.k <= 0) {
     // No refraction
@@ -153,8 +153,6 @@ export class JellySlider {
     this.#backgroundTexture = createBackgroundTexture(this.root, 1, 1);
     this.#value = 0;
 
-    const hasTimestampQuery = this.root.enabledFeatures.has("timestamp-query");
-
     const NUM_POINTS = 17;
 
     this.#taaResolver = new TAAResolver(this.root, 1, 1);
@@ -164,9 +162,9 @@ export class JellySlider {
     const bezierTexture = this.#slider.bezierTexture.createView();
     const bezierBbox = this.#slider.bbox;
 
-    const filteringSampler = this.root["~unstable"].createSampler({
-      magFilter: "linear",
-      minFilter: "linear",
+    const filteringSampler = this.root['~unstable'].createSampler({
+      magFilter: 'linear',
+      minFilter: 'linear',
     });
 
     this.#camera = new CameraController(
@@ -181,7 +179,7 @@ export class JellySlider {
 
     this.#bindGroups = this.#createBindGroups();
 
-    this.#rayMarchPipeline = this.root["~unstable"]
+    this.#rayMarchPipeline = this.root['~unstable']
       .with(taaPrimerAccess, this.#randomUniform)
       .with(cameraAccess, this.#camera.cameraUniform)
       .with(endCapAccess, this.#slider.endCapUniform)
@@ -196,7 +194,7 @@ export class JellySlider {
           return cfg;
         }
 
-        if ((options.jellyColor as d.v3f).kind === "vec3f") {
+        if ((options.jellyColor as d.v3f).kind === 'vec3f') {
           return cfg.with(constantAlbedoSlot, options.jellyColor as d.v3f);
         }
 
@@ -207,7 +205,7 @@ export class JellySlider {
           return cfg;
         }
 
-        if ((options.glowTint as d.v3f).kind === "vec3f") {
+        if ((options.glowTint as d.v3f).kind === 'vec3f') {
           return cfg.with(constantGlowTintSlot, options.glowTint as d.v3f);
         }
 
@@ -215,10 +213,10 @@ export class JellySlider {
       })
       .pipe((cfg) => (options.material ? cfg.with(materialSlot, options.material) : cfg))
       .withVertex(fullScreenTriangle, {})
-      .withFragment(raymarchFn, { format: "rgba8unorm" })
+      .withFragment(raymarchFn, { format: 'rgba8unorm' })
       .createPipeline();
 
-    this.#renderPipeline = this.root["~unstable"]
+    this.#renderPipeline = this.root['~unstable']
       .with(staticSlot, {
         bezierTexture,
         filteringSampler,
@@ -283,8 +281,8 @@ export class JellySlider {
     this.#rayMarchPipeline
       .withColorAttachment({
         view: this.root.unwrap(this.#textures[currentFrame].sampled),
-        loadOp: "clear",
-        storeOp: "store",
+        loadOp: 'clear',
+        storeOp: 'store',
       })
       .draw(3);
 
@@ -293,8 +291,8 @@ export class JellySlider {
     this.#renderPipeline
       .withColorAttachment({
         view: targetView,
-        loadOp: "clear",
-        storeOp: "store",
+        loadOp: 'clear',
+        storeOp: 'store',
       })
       .with(this.#bindGroups.render[currentFrame])
       .draw(3);
@@ -302,7 +300,7 @@ export class JellySlider {
 }
 
 const getRay = (ndc: d.v2f) => {
-  "use gpu";
+  'use gpu';
   const clipPos = d.vec4f(ndc.x, ndc.y, -1.0, 1.0);
 
   const invView = cameraAccess.$.viewInv;
@@ -323,7 +321,7 @@ const getRay = (ndc: d.v2f) => {
 };
 
 const getSliderBbox = () => {
-  "use gpu";
+  'use gpu';
   return SdfBbox({
     left: d.f32(sliderBBoxSlot.$[3]),
     right: d.f32(sliderBBoxSlot.$[1]),
@@ -333,7 +331,7 @@ const getSliderBbox = () => {
 };
 
 const sdInflatedPolyline2D = (p: d.v2f) => {
-  "use gpu";
+  'use gpu';
   const bbox = getSliderBbox();
 
   const uv = d.vec2f(
@@ -360,7 +358,7 @@ const sdInflatedPolyline2D = (p: d.v2f) => {
 };
 
 const cap3D = (position: d.v3f) => {
-  "use gpu";
+  'use gpu';
   const endCap = endCapAccess.$;
   const secondLastPoint = d.vec2f(endCap.x, endCap.y);
   const lastPoint = d.vec2f(endCap.z, endCap.w);
@@ -376,7 +374,7 @@ const cap3D = (position: d.v3f) => {
 };
 
 const sliderSdf3D = (position: d.v3f) => {
-  "use gpu";
+  'use gpu';
   const poly2D = sdInflatedPolyline2D(position.xy);
 
   let finalDist = d.f32(0.0);
@@ -400,7 +398,7 @@ const GroundParams = {
 };
 
 const rectangleCutoutDist = (position: d.v2f) => {
-  "use gpu";
+  'use gpu';
   const groundRoundness = GroundParams.groundRoundness;
 
   return sdf.sdRoundedBox2d(
@@ -411,7 +409,7 @@ const rectangleCutoutDist = (position: d.v2f) => {
 };
 
 const getMainSceneDist = (position: d.v3f) => {
-  "use gpu";
+  'use gpu';
   const groundThickness = GroundParams.groundThickness;
   const groundRoundness = GroundParams.groundRoundness;
 
@@ -423,7 +421,7 @@ const getMainSceneDist = (position: d.v3f) => {
 };
 
 const sliderApproxDist = (position: d.v3f) => {
-  "use gpu";
+  'use gpu';
   const bbox = getSliderBbox();
 
   const p = position.xy;
@@ -438,7 +436,7 @@ const sliderApproxDist = (position: d.v3f) => {
 };
 
 const getSceneDist = (position: d.v3f) => {
-  "use gpu";
+  'use gpu';
   const mainScene = getMainSceneDist(position);
   const poly3D = sliderSdf3D(position);
 
@@ -456,7 +454,7 @@ const getSceneDist = (position: d.v3f) => {
 };
 
 const getSceneDistForAO = (position: d.v3f) => {
-  "use gpu";
+  'use gpu';
   const mainScene = getMainSceneDist(position);
   const sliderApprox = sliderApproxDist(position);
   return std.min(mainScene, sliderApprox);
@@ -468,7 +466,7 @@ const getNormalFromSdf = tgpu.fn(
   [d.vec3f, d.f32],
   d.vec3f,
 )((position, epsilon) => {
-  "use gpu";
+  'use gpu';
   const k = d.vec3f(1, -1, 0);
 
   const offset1 = k.xyy.mul(epsilon);
@@ -490,12 +488,12 @@ const getNormalCapSdf = getNormalFromSdf.with(sdfSlot, cap3D);
 const getNormalMainSdf = getNormalFromSdf.with(sdfSlot, getMainSceneDist);
 
 const getNormalCap = (pos: d.v3f) => {
-  "use gpu";
+  'use gpu';
   return getNormalCapSdf(pos, 0.01);
 };
 
 const getNormalMain = (position: d.v3f) => {
-  "use gpu";
+  'use gpu';
   if (std.abs(position.z) > 0.22 || std.abs(position.x) > 1.02) {
     return d.vec3f(0, 1, 0);
   }
@@ -503,7 +501,7 @@ const getNormalMain = (position: d.v3f) => {
 };
 
 const getSliderNormal = (position: d.v3f, hitInfo: d.Infer<typeof HitInfo>) => {
-  "use gpu";
+  'use gpu';
   const poly2D = sdInflatedPolyline2D(position.xy);
   const gradient2D = poly2D.normal;
 
@@ -544,7 +542,7 @@ const getSliderNormal = (position: d.v3f, hitInfo: d.Infer<typeof HitInfo>) => {
 };
 
 const getNormal = (position: d.v3f, hitInfo: d.Infer<typeof HitInfo>) => {
-  "use gpu";
+  'use gpu';
   if (hitInfo.objectType === ObjectType.SLIDER && hitInfo.t < 0.96) {
     return getSliderNormal(position, hitInfo);
   }
@@ -557,12 +555,12 @@ const getNormal = (position: d.v3f, hitInfo: d.Infer<typeof HitInfo>) => {
 };
 
 const sqLength = (a: d.v3f) => {
-  "use gpu";
+  'use gpu';
   return std.dot(a, a);
 };
 
 const getFakeShadow = (position: d.v3f, lightDir: d.v3f): d.v3f => {
-  "use gpu";
+  'use gpu';
   const endCapX = endCapAccess.$.x;
 
   if (position.y < -GroundParams.groundThickness) {
@@ -615,7 +613,7 @@ const getFakeShadow = (position: d.v3f, lightDir: d.v3f): d.v3f => {
 };
 
 const calculateAO = (position: d.v3f, normal: d.v3f) => {
-  "use gpu";
+  'use gpu';
   let totalOcclusion = d.f32(0.0);
   let sampleWeight = d.f32(1.0);
   const stepDistance = AO_RADIUS / AO_STEPS;
@@ -637,7 +635,7 @@ const calculateAO = (position: d.v3f, normal: d.v3f) => {
 };
 
 const calculateLighting = (hitPosition: d.v3f, normal: d.v3f, rayOrigin: d.v3f) => {
-  "use gpu";
+  'use gpu';
   const lightDir = std.neg(lightAccess.$.direction);
 
   const fakeShadow = getFakeShadow(hitPosition, lightDir);
@@ -659,14 +657,14 @@ const calculateLighting = (hitPosition: d.v3f, normal: d.v3f, rayOrigin: d.v3f) 
 };
 
 const applyAO = (litColor: d.v3f, hitPosition: d.v3f, normal: d.v3f) => {
-  "use gpu";
+  'use gpu';
   const ao = calculateAO(hitPosition, normal);
   const finalColor = litColor.mul(ao);
   return d.vec4f(finalColor, 1.0);
 };
 
 const rayMarchNoJelly = (rayOrigin: d.v3f, rayDirection: d.v3f) => {
-  "use gpu";
+  'use gpu';
   let distanceFromOrigin = d.f32();
   let hit = d.f32();
 
@@ -685,8 +683,8 @@ const rayMarchNoJelly = (rayOrigin: d.v3f, rayDirection: d.v3f) => {
   return d.vec3f();
 };
 
-const renderPercentageOnGround = (hitPosition: d.v3f, center: d.v3f, percentage: number) => {
-  "use gpu";
+const renderPercentageOnGround = (hitPosition: d.v3f, center: d.v3f, _percentage: number) => {
+  'use gpu';
 
   const textWidth = 0.38;
   const textHeight = 0.33;
@@ -724,7 +722,7 @@ const renderBackground = (
   backgroundHitDist: number,
   offset: number,
 ) => {
-  "use gpu";
+  'use gpu';
   const hitPosition = rayOrigin.add(rayDirection.mul(backgroundHitDist));
 
   const percentageSample = renderPercentageOnGround(
@@ -802,8 +800,8 @@ const renderBackground = (
   );
 };
 
-const rayMarch = (rayOrigin: d.v3f, rayDirection: d.v3f, uv: d.v2f) => {
-  "use gpu";
+const rayMarch = (rayOrigin: d.v3f, rayDirection: d.v3f, _uv: d.v2f) => {
+  'use gpu';
   let totalSteps = d.u32();
 
   let backgroundDist = d.f32();

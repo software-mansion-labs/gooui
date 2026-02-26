@@ -1,8 +1,8 @@
-import type { TgpuRoot } from "typegpu";
-import type * as d from "typegpu/data";
-import type { MaterialContext } from "./data-types.ts";
-import { EventHandler } from "./events.ts";
-import { JellySlider } from "./jelly-slider.ts";
+import type { TgpuRoot } from 'typegpu';
+import type * as d from 'typegpu/data';
+import type { MaterialContext } from './data-types.ts';
+import { EventHandler } from './events.ts';
+import { JellySlider } from './jelly-slider.ts';
 
 export interface CanvasJellySliderOptions {
   root: TgpuRoot;
@@ -23,20 +23,20 @@ export class CanvasJellySlider {
   #canvasCtx: GPUCanvasContext;
 
   constructor(options: CanvasJellySliderOptions) {
-    this.canvas = document.createElement("canvas");
-    this.canvas.style.position = "absolute";
-    this.canvas.style.top = "0";
-    this.canvas.style.left = "0";
-    this.canvas.style.right = "0";
-    this.canvas.style.bottom = "0";
-    this.canvas.style.width = "100%";
-    this.canvas.style.height = "100%";
-    this.#canvasCtx = this.canvas.getContext("webgpu") as GPUCanvasContext;
+    this.canvas = document.createElement('canvas');
+    this.canvas.style.position = 'absolute';
+    this.canvas.style.top = '0';
+    this.canvas.style.left = '0';
+    this.canvas.style.right = '0';
+    this.canvas.style.bottom = '0';
+    this.canvas.style.width = '100%';
+    this.canvas.style.height = '100%';
+    this.#canvasCtx = this.canvas.getContext('webgpu') as GPUCanvasContext;
 
     this.#canvasCtx.configure({
       device: options.root.device,
       format: presentationFormat,
-      alphaMode: "premultiplied",
+      alphaMode: 'premultiplied',
     });
 
     const jellySlider = new JellySlider({

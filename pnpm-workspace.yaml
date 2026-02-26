@@ -1,11 +1,11 @@
 packages:
-  - "packages/*"
-  - "apps/*"
+  - 'packages/*'
+  - 'apps/*'
 
 catalog:
   typegpu: ^0.10.1
   unplugin-typegpu: ^0.10.0
   typescript: npm:tsover@5.9.11
-  "@webgpu/types": ^0.1.66
+  '@webgpu/types': ^0.1.66
   vitest: ^3.2.4
   tsdown: ^0.15.0

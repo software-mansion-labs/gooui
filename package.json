@@ -1,22 +1,25 @@
 {
   "name": "gooui-monorepo",
-  "private": true,
   "version": "0.0.0",
+  "private": true,
   "description": "",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
   "keywords": [
-    "UI",
     "GUI",
-    "WebGPU",
+    "Jelly",
     "TypeGPU",
-    "Jelly"
+    "UI",
+    "WebGPU"
   ],
   "license": "MIT",
+  "scripts": {
+    "fix": "oxfmt && oxlint --fix",
+    "check": "oxfmt --check && oxlint"
+  },
   "devDependencies": {
     "@biomejs/biome": "^2.3.5",
-    "@webgpu/types": "catalog:"
+    "@webgpu/types": "catalog:",
+    "oxfmt": "^0.35.0",
+    "oxlint": "^1.50.0"
   },
   "pnpm": {
     "overrides": {
