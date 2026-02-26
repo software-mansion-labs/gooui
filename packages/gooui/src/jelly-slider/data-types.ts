@@ -66,7 +66,7 @@ export const taaResolveLayout = tgpu.bindGroupLayout({
     texture: d.texture2d(),
   },
   outputTexture: {
-    storageTexture: d.textureStorage2d('rgba8unorm', 'write-only'),
+    storageTexture: d.textureStorage2d('rgba16float', 'write-only'),
   },
 });
 

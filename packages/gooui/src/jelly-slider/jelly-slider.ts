@@ -8,6 +8,8 @@ import type {
   TgpuTextureView,
   TgpuUniform,
 } from 'typegpu';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyBindGroup = TgpuBindGroup<Record<string, any>>;
 import tgpu, { d, std } from 'typegpu';
 import { fullScreenTriangle } from 'typegpu/common';
 import { Camera, CameraController } from '../common/camera.ts';
@@ -60,6 +62,7 @@ export interface JellySliderOptions {
    * @default true
    */
   refractedHighlight?: boolean | undefined;
+  extraBindGroups?: AnyBindGroup[] | undefined;
 }
 
 const lightAccess = tgpu.const(DirectionalLight, {
@@ -141,6 +144,7 @@ export class JellySlider {
   #textures: ReturnType<typeof createTextures>;
   #backgroundTexture: ReturnType<typeof createBackgroundTexture>;
   #bindGroups: BindGroups;
+  #extraBindGroups: AnyBindGroup[];
   #value: number;
 
   constructor(options: JellySliderOptions) {
@@ -151,6 +155,7 @@ export class JellySlider {
     this.#frameCount = 0;
     this.#textures = createTextures(this.root, 1, 1);
     this.#backgroundTexture = createBackgroundTexture(this.root, 1, 1);
+    this.#extraBindGroups = options.extraBindGroups ?? [];
     this.#value = 0;
 
     const NUM_POINTS = 17;
@@ -278,13 +283,15 @@ export class JellySlider {
 
     const currentFrame = this.#frameCount % 2;
 
-    this.#rayMarchPipeline
-      .withColorAttachment({
-        view: this.root.unwrap(this.#textures[currentFrame].sampled),
-        loadOp: 'clear',
-        storeOp: 'store',
-      })
-      .draw(3);
+    let rayMarchPass = this.#rayMarchPipeline.withColorAttachment({
+      view: this.root.unwrap(this.#textures[currentFrame].sampled),
+      loadOp: 'clear',
+      storeOp: 'store',
+    });
+    for (const bg of this.#extraBindGroups) {
+      rayMarchPass = rayMarchPass.with(bg);
+    }
+    rayMarchPass.draw(3);
 
     this.#taaResolver.resolve(this.#textures[currentFrame].sampled, this.#frameCount, currentFrame);
 
