@@ -15,15 +15,13 @@ catalogs:
     typegpu:
       specifier: ^0.10.1
       version: 0.10.1
-    typescript:
-      specifier: npm:tsover@5.9.11
-      version: 5.9.11
     unplugin-typegpu:
       specifier: ^0.10.0
       version: 0.10.0
 
 overrides:
   vite: npm:rolldown-vite@7.2.2
+  typescript: npm:tsover@5.9.11
 
 importers:
 
@@ -41,6 +39,9 @@ importers:
       oxlint:
         specifier: ^1.50.0
         version: 1.50.0
+      typescript:
+        specifier: npm:tsover@5.9.11
+        version: tsover@5.9.11
 
   apps/gooui-vite-vanilla:
     dependencies:
@@ -55,7 +56,7 @@ importers:
         version: 0.10.1
     devDependencies:
       typescript:
-        specifier: 'catalog:'
+        specifier: npm:tsover@5.9.11
         version: tsover@5.9.11
       unplugin-typegpu:
         specifier: 'catalog:'
