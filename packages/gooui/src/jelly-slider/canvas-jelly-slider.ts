@@ -1,4 +1,4 @@
-import type { TgpuRoot } from 'typegpu';
+import type { TgpuBindGroup, TgpuRoot } from 'typegpu';
 import type * as d from 'typegpu/data';
 import type { MaterialContext } from './data-types.ts';
 import { EventHandler } from './events.ts';
@@ -13,6 +13,7 @@ export interface CanvasJellySliderOptions {
    * @default true
    */
   refractedHighlight?: boolean | undefined;
+  extraBindGroups?: TgpuBindGroup[] | undefined;
 }
 
 const presentationFormat = navigator.gpu.getPreferredCanvasFormat();
@@ -45,6 +46,7 @@ export class CanvasJellySlider {
       glowTint: options.glowTint,
       material: options.material,
       refractedHighlight: options.refractedHighlight,
+      extraBindGroups: options.extraBindGroups,
       targetFormat: presentationFormat,
     });
 

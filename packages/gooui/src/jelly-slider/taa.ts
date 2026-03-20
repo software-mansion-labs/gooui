@@ -54,7 +54,7 @@ export const taaResolveFn = tgpu['~unstable'].computeFn({
     d.f32(1.0) - std.smoothstep(textRegionMaxY - borderSize, textRegionMaxY + borderSize, uv.y);
 
   const inTextRegion = fadeInX * fadeOutX * fadeInY * fadeOutY;
-  const blendFactor = std.mix(d.f32(0.9), d.f32(0.7), inTextRegion);
+  const blendFactor = std.mix(d.f32(0.85), d.f32(0.6), inTextRegion);
 
   const resolvedColor = d.vec4f(std.mix(currentColor.xyz, historyColorClamped, blendFactor), 1.0);
 
@@ -66,12 +66,12 @@ export function createTaaTextures(root: TgpuRoot, width: number, height: number)
     const texture = root['~unstable']
       .createTexture({
         size: [width, height],
-        format: 'rgba8unorm',
+        format: 'rgba16float',
       })
       .$usage('storage', 'sampled');
 
     return {
-      write: texture.createView(d.textureStorage2d('rgba8unorm')),
+      write: texture.createView(d.textureStorage2d('rgba16float')),
       sampled: texture.createView(),
     };
   });
